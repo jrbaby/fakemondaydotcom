@@ -1,0 +1,273 @@
+@using System
+@using System.Linq
+@using System.Collections.Generic
+@model MondayClone.Models.Board
+@{
+    Layout = null;
+    // use combined task list prepared by controller
+    var allTasks = ViewData["AllTasks"] as List<MondayClone.Models.TaskItem> ?? new List<MondayClone.Models.TaskItem>();
+    var assignees = allTasks.Select(t => t.Assignee).Where(a => !string.IsNullOrWhiteSpace(a)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(a => a).ToList();
+    var selectedAssignee = ViewContext.HttpContext.Request.Query.ContainsKey("assignee") ? ViewContext.HttpContext.Request.Query["assignee"].ToString() ?? string.Empty : string.Empty;
+    var boards = ViewData["Boards"] as List<string> ?? new List<string>();
+    var selectedBoard = ViewData["SelectedBoard"] as string ?? Model.Name;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MondayClone</title>
+    <style>
+        /* Monochrome dark theme (black & white) */
+        :root { --bg: #000; --panel: #0b0b0b; --muted: #bdbdbd; --accent: #ffffff; }
+        html,body { height:100%; }
+        body { font-family: Arial, sans-serif; background:var(--bg); color:var(--accent); margin:0; padding:18px; }
+        .header { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px }
+        .title { font-size:1.6rem; letter-spacing:0.6px }
+        .top-controls { display:flex; gap:8px; align-items:center }
+        .board-wrap { display:flex; gap:16px; }
+        .board-area { display:flex; gap:16px; width:72%; }
+        .sidebar { width:28%; background:var(--panel); padding:12px; border-radius:8px; border:1px solid #222 }
+        .column { background:transparent; padding:8px; border-radius:6px; width:33%; }
+        .col-panel { background:var(--panel); padding:12px; border-radius:8px; border:1px solid #222; min-height:200px }
+        h2 { margin:0 0 10px 0; font-size:1.05rem; color:var(--accent); border-bottom:1px solid #222; padding-bottom:8px }
+        .card { background:#0c0c0c; padding:10px; border-radius:6px; margin:8px 0; border:1px solid #222 }
+        .meta { font-size:0.82rem; color:var(--muted); margin-top:6px }
+        .actions { margin-top:8px; display:flex; gap:8px }
+        .btn { background:transparent; color:var(--accent); border:1px solid #444; padding:6px 8px; border-radius:4px; cursor:pointer }
+        .btn.primary { border-color:#fff }
+        .btn.danger { border-color:#fff; color:#fff }
+        .form-inline { display:flex; gap:8px; margin-left:8px }
+        input, select { padding:6px; border-radius:4px; border:1px solid #222; background:#050505; color:var(--accent) }
+        .filter { display:flex; gap:8px; align-items:center }
+        .small { font-size:0.85rem; color:var(--muted) }
+        .schedule-group { margin-bottom:10px }
+        .schedule-date { font-weight:bold; margin-bottom:6px }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">MondayClone — <span class="small">@Model.Name</span></div>
+
+        <div class="top-controls">
+            <form method="get" class="filter">
+                <label class="small">Board:</label>
+                <select name="boardName" onchange="this.form.submit()">
+                    @foreach(var b in boards)
+                    {
+                        <option value="@b" @(string.Equals(b, selectedBoard, StringComparison.OrdinalIgnoreCase) ? "selected" : "")>@b</option>
+                    }
+                </select>
+                <label class="small">Assignee:</label>
+                <select name="assignee" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    @foreach(var a in assignees)
+                    {
+                        <option value="@a" @(string.Equals(a, selectedAssignee, StringComparison.OrdinalIgnoreCase) ? "selected" : "")>@a</option>
+                    }
+                </select>
+            </form>
+
+            <form asp-action="AddTask" method="post" class="form-inline">
+                <div style="display:flex; align-items:center; gap:6px">
+                    <input id="titleInput" name="title" placeholder="Title" />
+                    <button id="micBtn" type="button" class="btn" title="Use microphone">🎤</button>
+                </div>
+                <input name="assignee" placeholder="Assignee" value="@selectedAssignee" />
+                <select name="priority">
+                    <option value="1">Low</option>
+                    <option value="2" selected>Medium</option>
+                    <option value="3">High</option>
+                </select>
+                <input name="dueDate" placeholder="yyyy-mm-dd" />
+                <button class="btn primary" type="submit">Add</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="board-wrap">
+        <div class="board-area">
+            <div class="column">
+                <div class="col-panel">
+                    <h2>To Do</h2>
+                    @foreach(var t in Model.GetTasksByStatus(MondayClone.Models.TaskStatus.ToDo))
+                    {
+                        if (!string.IsNullOrWhiteSpace(selectedAssignee) && !string.Equals(t.Assignee, selectedAssignee, StringComparison.OrdinalIgnoreCase)) { continue; }
+                        <div class="card">
+                            <div><strong>@t.Title</strong></div>
+                            <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
+                            <div class="actions">
+                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <select name="status">
+                                        <option value="1" selected>To Do</option>
+                                        <option value="2">In Progress</option>
+                                        <option value="3">Done</option>
+                                    </select>
+                                    <button class="btn" type="submit">Move</button>
+                                </form>
+                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn danger" type="submit">Delete</button>
+                                </form>
+                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn" type="submit">Complete</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="col-panel">
+                    <h2>In Progress</h2>
+                    @foreach(var t in Model.GetTasksByStatus(MondayClone.Models.TaskStatus.InProgress))
+                    {
+                        if (!string.IsNullOrWhiteSpace(selectedAssignee) && !string.Equals(t.Assignee, selectedAssignee, StringComparison.OrdinalIgnoreCase)) { continue; }
+                        <div class="card">
+                            <div><strong>@t.Title</strong></div>
+                            <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
+                            <div class="actions">
+                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <select name="status">
+                                        <option value="1">To Do</option>
+                                        <option value="2" selected>In Progress</option>
+                                        <option value="3">Done</option>
+                                    </select>
+                                    <button class="btn" type="submit">Move</button>
+                                </form>
+                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn danger" type="submit">Delete</button>
+                                </form>
+                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn" type="submit">Complete</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="col-panel">
+                    <h2>Done</h2>
+                    @foreach(var t in Model.GetTasksByStatus(MondayClone.Models.TaskStatus.Done))
+                    {
+                        if (!string.IsNullOrWhiteSpace(selectedAssignee) && !string.Equals(t.Assignee, selectedAssignee, StringComparison.OrdinalIgnoreCase)) { continue; }
+                        <div class="card">
+                            <div><strong>@t.Title</strong></div>
+                            <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
+                            <div class="actions">
+                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <select name="status">
+                                        <option value="1">To Do</option>
+                                        <option value="2">In Progress</option>
+                                        <option value="3" selected>Done</option>
+                                    </select>
+                                    <button class="btn" type="submit">Move</button>
+                                </form>
+                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn danger" type="submit">Delete</button>
+                                </form>
+                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                    <input type="hidden" name="id" value="@t.Id" />
+                                    <input type="hidden" name="boardName" value="@selectedBoard" />
+                                    <button class="btn" type="submit">Complete</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <aside class="sidebar">
+            <h2>Schedule</h2>
+            <div class="small">Upcoming tasks by date</div>
+            <div style="height:10px"></div>
+            @{
+                var scheduled = allTasks.Where(t => t.DueDate.HasValue)
+                    .OrderBy(t => t.DueDate)
+                    .GroupBy(t => t.DueDate!.Value.Date)
+                    .ToList();
+            }
+            @if (!scheduled.Any())
+            {
+                <div class="small" style="margin-top:10px">No scheduled tasks. Add a due date when creating a task.</div>
+            }
+            else
+            {
+                foreach (var grp in scheduled)
+                {
+                    <div class="schedule-group">
+                        <div class="schedule-date">@grp.Key.ToString("yyyy-MM-dd")</div>
+                        @foreach(var t in grp)
+                        {
+                            if (!string.IsNullOrWhiteSpace(selectedAssignee) && !string.Equals(t.Assignee, selectedAssignee, StringComparison.OrdinalIgnoreCase)) { continue; }
+                            <div class="card" style="margin:6px 0; padding:8px;">
+                                <div><strong>@t.Title</strong></div>
+                                <div class="meta">@t.Assignee • @t.Priority • @t.Status</div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </aside>
+    </div>
+</body>
+<script>
+    // Browser speech-to-text using Web Speech API
+    (function(){
+        const mic = document.getElementById('micBtn');
+        const input = document.getElementById('titleInput');
+        if (!mic || !input) return;
+
+        let recognition = null;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            recognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                input.value = (input.value ? input.value + ' ' : '') + text;
+            };
+            recognition.onerror = () => { mic.textContent = '🎤'; };
+            recognition.onend = () => { mic.textContent = '🎤'; };
+        } else {
+            mic.disabled = true;
+            mic.title = 'Speech not supported in this browser';
+        }
+
+        let listening = false;
+        mic.addEventListener('click', () => {
+            if (!recognition) return;
+            if (!listening) {
+                recognition.start();
+                mic.textContent = '■';
+                listening = true;
+            } else {
+                recognition.stop();
+                mic.textContent = '🎤';
+                listening = false;
+            }
+        });
+    })();
+</script>
+</html>

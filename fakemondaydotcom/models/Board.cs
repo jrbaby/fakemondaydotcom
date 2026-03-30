@@ -15,9 +15,10 @@ namespace MondayClone.Models
             Name = name;
         }
 
-        public TaskItem AddTask(string title, string assignee)
+        public TaskItem AddTask(string title, string assignee, TaskPriority priority = TaskPriority.Medium, DateTime? dueDate = null, TaskStatus status = TaskStatus.ToDo)
         {
-            var task = new TaskItem(_nextId++, title, assignee);
+            var task = new TaskItem(_nextId++, title, assignee, priority, dueDate);
+            task.Status = status;
             _tasks.Add(task);
             return task;
         }

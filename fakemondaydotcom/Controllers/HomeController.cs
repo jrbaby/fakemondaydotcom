@@ -115,28 +115,16 @@ namespace MondayClone.Controllers
         public IActionResult CompleteTask(int id, string? boardName)
         {
             var boards = LoadBoards();
-            bool removed = false;
             if (!string.IsNullOrWhiteSpace(boardName))
             {
                 var b = boards.FirstOrDefault(x => x.Name.Equals(boardName, StringComparison.OrdinalIgnoreCase));
-                if (b != null)
-                {
-                    var t = b.GetTask(id);
-                    if (t != null)
-                    {
-                        // archive by moving to Done or removing; here we remove
-                        removed = b.RemoveTask(id);
-                    }
-                }
+                b?.MoveTask(id, TaskStatus.Done);
             }
             else
             {
                 foreach (var b in boards)
-                {
-                    if (b.RemoveTask(id)) { removed = true; break; }
-                }
+                    if (b.MoveTask(id, TaskStatus.Done)) break;
             }
-
             SaveBoards(boards);
             return RedirectToAction("Index", new { boardName });
         }

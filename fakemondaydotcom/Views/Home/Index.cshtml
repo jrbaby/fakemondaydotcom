@@ -4,7 +4,6 @@
 @model MondayClone.Models.Board
 @{
     Layout = null;
-    // use combined task list prepared by controller
     var allTasks = ViewData["AllTasks"] as List<MondayClone.Models.TaskItem> ?? new List<MondayClone.Models.TaskItem>();
     var assignees = allTasks.Select(t => t.Assignee).Where(a => !string.IsNullOrWhiteSpace(a)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(a => a).ToList();
     var selectedAssignee = ViewContext.HttpContext.Request.Query.ContainsKey("assignee") ? ViewContext.HttpContext.Request.Query["assignee"].ToString() ?? string.Empty : string.Empty;
@@ -18,7 +17,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MondayClone</title>
     <style>
-        /* Monochrome dark theme (black & white) */
         :root { --bg: #000; --panel: #0b0b0b; --muted: #bdbdbd; --accent: #ffffff; }
         html,body { height:100%; }
         body { font-family: Arial, sans-serif; background:var(--bg); color:var(--accent); margin:0; padding:18px; }
@@ -50,7 +48,7 @@
         <div class="title">MondayClone — <span class="small">@Model.Name</span></div>
 
         <div class="top-controls">
-            <form method="get" class="filter">
+            <form method="get" action="/" class="filter">
                 <label class="small">Board:</label>
                 <select name="boardName" onchange="this.form.submit()">
                     @foreach(var b in boards)
@@ -68,7 +66,7 @@
                 </select>
             </form>
 
-            <form asp-action="AddTask" method="post" class="form-inline">
+            <form action="/Home/AddTask" method="post" class="form-inline">
                 <div style="display:flex; align-items:center; gap:6px">
                     <input id="titleInput" name="title" placeholder="Title" />
                     <button id="micBtn" type="button" class="btn" title="Use microphone">🎤</button>
@@ -97,7 +95,7 @@
                             <div><strong>@t.Title</strong></div>
                             <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
                             <div class="actions">
-                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                <form action="/Home/MoveTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <select name="status">
@@ -107,12 +105,12 @@
                                     </select>
                                     <button class="btn" type="submit">Move</button>
                                 </form>
-                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                <form action="/Home/DeleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn danger" type="submit">Delete</button>
                                 </form>
-                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                <form action="/Home/CompleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn" type="submit">Complete</button>
@@ -133,7 +131,7 @@
                             <div><strong>@t.Title</strong></div>
                             <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
                             <div class="actions">
-                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                <form action="/Home/MoveTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <select name="status">
@@ -143,12 +141,12 @@
                                     </select>
                                     <button class="btn" type="submit">Move</button>
                                 </form>
-                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                <form action="/Home/DeleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn danger" type="submit">Delete</button>
                                 </form>
-                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                <form action="/Home/CompleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn" type="submit">Complete</button>
@@ -169,7 +167,7 @@
                             <div><strong>@t.Title</strong></div>
                             <div class="meta">@t.Assignee • @t.Priority • @(t.DueDate?.ToString("yyyy-MM-dd") ?? "no due") • @(t.DaysLeft() is int dl ? (dl < 0 ? "Overdue" : dl == 0 ? "Due today" : dl + "d left") : "")</div>
                             <div class="actions">
-                                <form asp-action="MoveTask" method="post" style="display:inline">
+                                <form action="/Home/MoveTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <select name="status">
@@ -179,12 +177,12 @@
                                     </select>
                                     <button class="btn" type="submit">Move</button>
                                 </form>
-                                <form asp-action="DeleteTask" method="post" style="display:inline">
+                                <form action="/Home/DeleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn danger" type="submit">Delete</button>
                                 </form>
-                                <form asp-action="CompleteTask" method="post" style="display:inline">
+                                <form action="/Home/CompleteTask" method="post" style="display:inline">
                                     <input type="hidden" name="id" value="@t.Id" />
                                     <input type="hidden" name="boardName" value="@selectedBoard" />
                                     <button class="btn" type="submit">Complete</button>
@@ -231,12 +229,10 @@
     </div>
 </body>
 <script>
-    // Browser speech-to-text using Web Speech API
     (function(){
         const mic = document.getElementById('micBtn');
         const input = document.getElementById('titleInput');
         if (!mic || !input) return;
-
         let recognition = null;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
@@ -254,7 +250,6 @@
             mic.disabled = true;
             mic.title = 'Speech not supported in this browser';
         }
-
         let listening = false;
         mic.addEventListener('click', () => {
             if (!recognition) return;

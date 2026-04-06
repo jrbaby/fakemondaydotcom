@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
 
 namespace MondayClone.Models
 {
     public class Board
     {
         public string Name { get; set; } = "";
-
         public List<TaskItem> Tasks { get; set; } = new();
-
         public int NextId { get; set; } = 1;
 
         public Board() { }

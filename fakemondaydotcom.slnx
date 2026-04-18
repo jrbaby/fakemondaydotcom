@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Solution Items/">
+    <File Path="Dockerfile" />
     <File Path="railway.json" />
   </Folder>
   <Project Path="fakemondaydotcom/fakemondaydotcom.csproj" />
